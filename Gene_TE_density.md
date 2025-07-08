@@ -2,13 +2,13 @@
 #!/bin/bash
 
 # Define paths
-GENOME_FILE="/ArganiaGenomics/Assembly_Colora/results/assemblies/yahs_primary.fa"
-TE_GFF="/ArganiaGenomics/Assembly_Colora/TE/RepeatMasker_out/yahs_primary.fa.out.gff"
-GENE_GFF="/ArganiaGenomics/Plots/te_gene/yahs_primary_genes_features.gff3"
-WINDOW_SIZE=1000000  # 1 Mb window
+GENOME_FILE="$(pwd)/hap2.chr.fa"
+TE_GFF="$(pwd)/argane.asm.chr.full_mask.gff3"
+GENE_GFF="$(pwd)/Sideroxylon_spinosum.gff3"
+WINDOW_SIZE=500000  # 1 Mb window
 
 # Create a working directory
-WORKDIR="/ArganiaGenomics/Plots/te_gene"
+WORKDIR="Circos_TE_Genes"
 mkdir -p $WORKDIR
 cd $WORKDIR
 
@@ -19,9 +19,9 @@ cut -f1,2 ${GENOME_FILE}.fai > genome.chrom.sizes
 
 
 
-# Step 4: Generate genomic windows (1 Mb by default)
+# Step 4: Generate genomic windows (0.5 Mb by default)
 echo "Generating genomic windows..."
-bedtools makewindows -g genome.chrom.sizes -w $WINDOW_SIZE -s 100000 -i winnum > genome_windows.bed
+bedtools makewindows -g genome.chrom.sizes -w $WINDOW_SIZE -w 500000 -s 50000 -i winnum > genome_windows.bed
 
 # Step 5: Calculate TE density in each window
 echo "Calculating TE density..."
@@ -46,91 +46,108 @@ awk 'BEGIN {OFS="\t"} {print "chr", "-", $1, $1, 0, $2, "chr"$1}' genome.chrom.s
 
 cat <<EOL > circos.conf
 # circos.conf
-karyotype = karyotype_clean.txt   # Path to the karyotype file
-chromosomes_units  = 1000000
-chromosomes_display_default = yes  # Do not show labels for all chromosomes
 
+karyotype = karyotype.txt  # Path to the karyotype file
 
 <ideogram>
     <spacing>
-        default = 0.003r
+        default = 0.005r
     </spacing>
     thickness = 60p
     stroke_thickness = 2p
     stroke_color = black
     radius = 0.9r
-
     show_label     = yes
-    label_font     = bold
-    label_radius   = (dims(ideogram,radius_inner) + dims(ideogram,radius_outer))/1.8
+    label_font     = default
+    label_radius   = (dims(ideogram,radius_inner) + dims(ideogram,radius_outer))/2
     label_center   = yes
-    label_size     = 35
+    label_size     = 20
     label_with_tag = yes
-    label_parallel = yes
-    label_case     = lower
-    #label_format     = eval( replace(var(label),"scaffold_","Chr") )
-#    label_format     = eval( var(chr) =~ /scaffold_[1-11]$/ ? var(label) : "")
-    label_format = eval(var(chr) =~ /scaffold_(?:[1-9]|10)$/ ? replace(var(label),"scaffold_","Chr") : "")
+    label_parallel = no
+    label_case     = upper
+
 
 </ideogram>
 
-show_ticks = yes
-show_tick_labels = yes
-
-<ticks>
-    radius           = 1r
-    color            = black
-    thickness        = 2p
-    multiplier       = 1e-6  # Convert base pairs to Mb
-    format           = %d Mb
-    <tick>
-        spacing     = 10u  # Every 10 Mb
-        size        = 15p
-        thickness   = 2p
-        color       = black
-        label_offset = 2p
-        show_label  = yes
-        label_size  = 15p
-    </tick>
-</ticks>
 <plots>
     <plot>
         type = histogram
-        file = gene_density_clean.txt # Path to TE density file
+        file = gene_density.txt # Path to TE density file
         color = green
         thickness = 2p
-        r1 = 0.97r
-        r0 = 0.9r
+        r1 = 0.96r
+        r0 = 0.76r
         fill_color = green
     </plot>
     <plot>
         type = histogram
-        file = te_density_clean.txt # Path to TE density file
+        file = te_density.txt # Path to TE density file
         color = red
         thickness = 2p
-        r1 = 0.89r
-        r0 = 0.82r
+        r1 = 0.75r
+        r0 = 0.55r
         fill_color = red
     </plot>
-    <plot>
-        type = line
-        file = gc_content.txt
-        color = dark
-        thickness = 2p
-        r1 = 0.7r
-        r0 = 0.6r
-        fill_color = dark
-#        max = 0.60
-#       min = 0.20
-    </plot>
+
 </plots>
 
-<image>
-    <<include /etc/circos/image.conf>>  # Standard image parameters
-</image>
 
-<<include /etc/circos/colors_fonts_patterns.conf>>
-<<include /etc/circos/housekeeping.conf>>
+
+<ticks>
+show_ticks       = yes
+show_tick_labels = yes
+
+<tick>
+spacing        = 50000000
+size           = 15p
+color          = black
+show_label     = yes
+label_size     = 24p
+label_offset   = 10p
+format         = %s
+</tick>
+
+</ticks>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<image>
+
+    <<include /etc/circos/image.conf>>  # Standard image parameters
+#    radius           = 1000p    # You can decrease this value (e.g., 500p)
+#    image_map_use    = no
+#    image_map_overlay = no
+#    svg_font_scale   = 0.5      # Decrease font size to match the smaller image size
+
+
+</image>
+<<include /home/slimane/miniconda/pkgs/circos-0.69.9-hdfd78af_0/etc/colors_fonts_patterns.conf>>
+<<include /home/slimane/miniconda/pkgs/circos-0.69.9-hdfd78af_0/etc/housekeeping.conf>>
+
+EOL
+
+# Step 8: Run Circos
+echo "Running Circos..."
+circos -conf circos.conf
+
+echo "Circos plot generated!"
 
 
 
